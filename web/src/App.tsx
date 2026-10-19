@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ApiError, getState, logout } from './api'
+import { ApiError, getCloudState, logout } from './api'
 import { ageText, BusStrip, Header, Login, RelayCard, Summary, useNames } from './components'
 import { useRelays } from './useRelays'
 import type { Relay } from './types'
@@ -29,7 +29,7 @@ export default function App() {
   // Session check: /api/state succeeds only with a valid cookie.
   useEffect(() => {
     const ctl = new AbortController()
-    getState(ctl.signal)
+    getCloudState(ctl.signal)
       .then((initial) => setAuth({ kind: 'in', initial }))
       .catch((e) => {
         if (e instanceof DOMException && e.name === 'AbortError') return
