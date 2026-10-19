@@ -91,6 +91,32 @@ form { display: grid; gap: 16px; }
 .stat.pending dd { color: var(--amber); }
 .note { margin: 0; font-size: 0.88rem; color: var(--muted); }
 
+
+/* control mode and independent cloud-sync feedback */
+.mode-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  margin: 0 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+}
+.mode-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.mode-heading h2 { margin: 0 0 3px; font-size: 1rem; font-weight: 600; }
+.mode-heading p { margin: 0; color: var(--muted); font-size: 0.84rem; }
+.mode-status { font-size: 0.84rem; color: var(--muted); }
+.mode-status.ok { color: var(--mint); }
+.mode-status.error { color: var(--coral); }
+.mode-status.checking { color: var(--amber); }
+.mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--ink); }
+.mode-switch button { min-height: 44px; padding: 8px 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--muted); font-weight: 600; }
+.mode-switch button.selected { background: var(--cobalt); color: #fff; border-color: var(--cobalt-hi); }
+.mode-switch button:disabled { cursor: default; opacity: 0.9; }
+.sync-line { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.sync-line.pending { color: var(--amber); }
+.sync-line.failed { color: var(--coral); }
+
 /* relays */
 .grid {
   display: grid;
@@ -138,6 +164,8 @@ form { display: grid; gap: 16px; }
   }
 }
 @media (max-width: 560px) {
+  .mode-heading { flex-direction: column; }
+  .mode-status { line-height: 1.35; }
   .shell { padding: 0 14px 28px; }
   .stats { grid-template-columns: repeat(2, 1fr); row-gap: 16px; }
   .grid { gap: 10px; }
