@@ -25,7 +25,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt', // new versions wait for the user to tap "Update"
+      registerType: 'autoUpdate', // new versions wait for the user to tap "Update"
       includeAssets: ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Home Control',
