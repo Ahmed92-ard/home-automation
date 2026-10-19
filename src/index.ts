@@ -175,11 +175,17 @@ async function handle(request: Request, env: Env): Promise<Response> {
 
     if (method === "GET" && path === "/api/device/commands") {
       const result = await env.home_automation_db.prepare(
-        `SELECT id, relay_id, desired_state
-         FROM commands
-         WHERE acknowledged_at IS NULL
-         ORDER BY id ASC
-         LIMIT 20`
+        `SELECT c.id, c.relay_id, c.desired_state
+         FROM commands c
+         WHERE c.acknowledged_at IS NULL
+           AND c.id = (
+             SELECT MAX(newest.id)
+             FROM commands newest
+             WHERE newest.relay_id = c.relay_id
+               AND newest.acknowledged_at IS NULL
+           )
+         ORDER BY c.id ASC
+         LIMIT 8`
       ).all();
 
       return json({ commands: result.results });
@@ -211,7 +217,14 @@ async function handle(request: Request, env: Env): Promise<Response> {
       const command = await env.home_automation_db.prepare(
         `SELECT id, relay_id, desired_state
          FROM commands
-         WHERE id = ? AND acknowledged_at IS NULL`
+         WHERE id = ?
+           AND acknowledged_at IS NULL
+           AND id = (
+             SELECT MAX(newest.id)
+             FROM commands newest
+             WHERE newest.relay_id = commands.relay_id
+               AND newest.acknowledged_at IS NULL
+           )`
       ).bind(body.commandId).first<{
         id: number;
         relay_id: number;
@@ -227,16 +240,32 @@ async function handle(request: Request, env: Env): Promise<Response> {
       }
 
       const now = Math.floor(Date.now() / 1000);
-      const batch = await env.home_automation_db.batch([
+      const ackResults = await env.home_automation_db.batch([
         env.home_automation_db.prepare(
           `UPDATE commands SET acknowledged_at = ?
-           WHERE id = ? AND acknowledged_at IS NULL`
+           WHERE id = ? AND acknowledged_at IS NULL
+             AND id = (
+               SELECT MAX(newest.id)
+               FROM commands newest
+               WHERE newest.relay_id = commands.relay_id
+                 AND newest.acknowledged_at IS NULL
+             )`
         ).bind(now, command.id),
         env.home_automation_db.prepare(
           `UPDATE relay_states SET reported_state = ?, updated_at = ?
-           WHERE relay_id = ?`
-        ).bind(body.state, now, body.relayId),
+           WHERE relay_id = ?
+             AND changes() = 1
+             AND EXISTS (
+               SELECT 1 FROM commands acknowledged
+               WHERE acknowledged.id = ?
+                 AND acknowledged.acknowledged_at = ?
+             )`
+        ).bind(body.state, now, body.relayId, command.id, now),
       ]);
+
+      if (ackResults[0].meta.changes !== 1) {
+        return fail(409, "Command was superseded before acknowledgement");
+      }
 
       return json({ ok: true });
     }
@@ -277,6 +306,11 @@ async function handle(request: Request, env: Env): Promise<Response> {
       const now = Math.floor(Date.now() / 1000);
 
       await env.home_automation_db.batch([
+        // Supersede older pending commands for this relay before inserting the latest request.
+        env.home_automation_db.prepare(
+          `UPDATE commands SET acknowledged_at = ?
+           WHERE relay_id = ? AND acknowledged_at IS NULL`
+        ).bind(now, relayId),
         env.home_automation_db.prepare(
           `UPDATE relay_states SET desired_state = ?, updated_at = ?
            WHERE relay_id = ?`
