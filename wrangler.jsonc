@@ -1,0 +1,13 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "home-automation-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-19",
+	"d1_databases": [
+		{
+			"binding": "home_automation_db",
+			"database_name": "home-automation-db",
+			"database_id": "5cf588a8-3a75-40d1-816f-021dbfab69bb"
+		}
+	]
+}
