@@ -22,7 +22,7 @@ export function useRelays(initial: Relay[] | null, mode: ControlMode, onUnauthor
     hasPendingCloudSync() ? 'pending' : 'synced',
   )
 
-  const inFlight = useRef(false)
+  const inFlightModes = useRef(new Set<ControlMode>())
   const requestVersion = useRef(0)
   const modeRef = useRef(mode)
   modeRef.current = mode
@@ -31,11 +31,11 @@ export function useRelays(initial: Relay[] | null, mode: ControlMode, onUnauthor
   unauthorized.current = onUnauthorized
 
   const refresh = useCallback(async () => {
-    if (inFlight.current) return
-    inFlight.current = true
+    const requestedMode = modeRef.current
+    if (inFlightModes.current.has(requestedMode)) return
+    inFlightModes.current.add(requestedMode)
     setRefreshing(true)
     const version = ++requestVersion.current
-    const requestedMode = modeRef.current
     try {
       const next = await getState(requestedMode)
       if (version !== requestVersion.current || requestedMode !== modeRef.current) return
@@ -59,8 +59,8 @@ export function useRelays(initial: Relay[] | null, mode: ControlMode, onUnauthor
         setLinkError(e instanceof Error ? e.message : 'Could not refresh.')
       }
     } finally {
-      inFlight.current = false
-      setRefreshing(false)
+      inFlightModes.current.delete(requestedMode)
+      setRefreshing(inFlightModes.current.size > 0)
     }
   }, [])
 

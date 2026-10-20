@@ -51,20 +51,24 @@ function cookieValue(request: Request, name: string): string | null {
 
 function sameOrigin(request: Request, env: Env): boolean {
   const origin = request.headers.get("Origin");
-  if (!origin) return false;
+  let accepted = false;
 
-  try {
-    const suppliedOrigin = new URL(origin).origin;
-    const workerOrigin = new URL(request.url).origin;
-    const appOrigin = env.APP_ORIGIN ? new URL(env.APP_ORIGIN).origin : null;
+  if (origin) {
+    try {
+      const suppliedOrigin = new URL(origin).origin;
+      const workerOrigin = new URL(request.url).origin;
+      const appOrigin = env.APP_ORIGIN ? new URL(env.APP_ORIGIN).origin : null;
 
-    return suppliedOrigin === workerOrigin ||
-      (appOrigin !== null && suppliedOrigin === appOrigin);
-  } catch {
-    return false;
+      accepted =
+        suppliedOrigin === workerOrigin ||
+        (appOrigin !== null && suppliedOrigin === appOrigin);
+    } catch {
+      accepted = false;
+    }
   }
-}
 
+  return accepted;
+}
 async function sessionIsValid(request: Request, env: Env): Promise<boolean> {
   const token = cookieValue(request, COOKIE_NAME);
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return false;

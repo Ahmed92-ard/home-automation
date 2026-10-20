@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ApiError, checkModeConnection, getCloudState, logout } from './api'
+import { ApiError, checkModeConnection, getCloudState, getLocalState, logout } from './api'
 import type { ControlMode } from './api'
 import { ageText, BusStrip, Header, Login, RelayCard, Summary, useNames } from './components'
 import { useRelays } from './useRelays'
@@ -44,16 +44,28 @@ export default function App() {
   const [auth, setAuth] = useState<Auth>({ kind: 'checking' })
   const [update, setUpdate] = useState<null | (() => void)>(null)
 
+  const isEsp32Host = window.location.hostname === '192.168.31.182'
+
   useEffect(() => {
     const ctl = new AbortController()
-    getCloudState(ctl.signal)
+    const initialState = isEsp32Host
+      ? getLocalState(ctl.signal)
+      : getCloudState(ctl.signal)
+
+    initialState
       .then((initial) => setAuth({ kind: 'in', initial }))
       .catch((e) => {
         if (e instanceof DOMException && e.name === 'AbortError') return
-        setAuth({ kind: 'out', notice: e instanceof ApiError && e.status !== 401 ? e.message : undefined })
+        setAuth({
+          kind: 'out',
+          notice: e instanceof ApiError && e.status !== 401
+            ? e.message
+            : undefined,
+        })
       })
+
     return () => ctl.abort()
-  }, [])
+  }, [isEsp32Host])
 
   useEffect(() => {
     const updateSW = registerSW({ onNeedRefresh: () => setUpdate(() => () => void updateSW(true)) })
@@ -136,6 +148,11 @@ function Dashboard({ initial, onSignedOut }: { initial: Relay[] | null; onSigned
   }, [s.notice, s.clearNotice])
 
   async function signOut() {
+    if (window.location.hostname === '192.168.31.182') {
+      window.location.href = 'https://afautomation.vercel.app/'
+      return
+    }
+
     setSigningOut(true)
     setSignOutError(null)
     try {
